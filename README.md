@@ -1,5 +1,15 @@
 # Constraint Theory Core
 
+
+## Meta
+
+**Domain:** constraint-theory
+**Depends on:** —
+**Depended by:** —
+**Implements:** Deterministic manifold snapping — maps continuous vectors to exact Pythagorean c...
+**Related:** —
+
+
 `0.6² + 0.8² = 1.0000000000000002` — and you've been debugging this for years.
 
 [![GitHub stars](https://img.shields.io/github/stars/SuperInstance/constraint-theory-core?style=social)](https://github.com/SuperInstance/constraint-theory-core)
