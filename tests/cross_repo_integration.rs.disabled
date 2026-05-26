@@ -7,7 +7,7 @@
 //! - constraint-ranch
 
 use constraint_theory_core::{
-    hidden_dim_count, holographic_accuracy, lift_to_hidden, project_visible,
+    hidden_dim_count, holographic_accuracy, lift_to_hidden, project_to_visible,
     PythagoreanManifold, PythagoreanQuantizer, QuantizationMode, snap,
     compute_holonomy, verify_holonomy,
 };
@@ -78,7 +78,7 @@ fn test_lift_project_round_trip() {
             let lifted = lift_to_hidden(&point, *k);
             assert_eq!(lifted.len(), point.len() + k);
             
-            let projected = project_visible(&lifted, point.len());
+            let projected = project_to_visible(&lifted, point.len());
             assert_eq!(projected.len(), point.len());
             
             // Verify projection recovers original point (approximately)
@@ -146,7 +146,7 @@ fn test_quantizer_modes_cross_repo() {
     let turbo = PythagoreanQuantizer::for_vector_db();
     let vec_data: Vec<f64> = (0..128).map(|i| (i as f64).sin()).collect();
     let result = turbo.quantize(&vec_data);
-    assert!(result.distortion < 0.5, "Distortion should be low");
+    assert!(result.mse < 0.5, "Distortion should be low");
 }
 
 /// Test holonomy computation
@@ -163,8 +163,8 @@ fn test_holonomy_cross_repo() {
     ];
     
     let result = compute_holonomy(&identity_cycle);
-    assert!(result.is_identity(1e-10), "Identity cycle should have zero holonomy");
-    
+    assert!(result.is_within_tolerance(1e-10), "Identity cycle should have zero holonomy");
+
     // Create a cycle with known holonomy
     let quarter_turns = vec![
         rotation_z(std::f64::consts::FRAC_PI_2),
@@ -172,13 +172,13 @@ fn test_holonomy_cross_repo() {
         rotation_z(std::f64::consts::FRAC_PI_2),
         rotation_z(std::f64::consts::FRAC_PI_2),
     ];
-    
+
     let result = compute_holonomy(&quarter_turns);
-    assert!(result.is_identity(1e-10), "4 × π/2 should be identity");
-    
+    assert!(result.is_within_tolerance(1e-10), "4 × π/2 should be identity");
+
     // Verify holonomy checking
     let cycles = vec![identity_cycle, quarter_turns];
-    assert!(verify_holonomy(&cycles, 1e-10).is_ok());
+    assert!(verify_holonomy(&cycles, 1e-10));
 }
 
 /// Test batch processing matches single processing
@@ -187,21 +187,22 @@ fn test_holonomy_cross_repo() {
 fn test_batch_consistency() {
     let manifold = PythagoreanManifold::new(200);
     
-    let points: Vec<[f64; 2]> = (0..100)
+    let points: Vec<[f32; 2]> = (0..100)
         .map(|i| {
             let angle = (i as f64) * 0.0628; // ~2π/100
-            [angle.cos(), angle.sin()]
+            [angle.cos() as f32, angle.sin() as f32]
         })
         .collect();
-    
+
     // Process individually
     let individual: Vec<_> = points.iter()
-        .map(|p| snap(&manifold, *p))
+        .map(|&p| snap(&manifold, p))
         .collect();
-    
-    // Process as batch
-    let batch = manifold.snap_batch(&points);
-    
+
+    // Process as batch (API writes into caller-provided buffer)
+    let mut batch = vec![([0.0f32, 0.0f32], 0.0f32); points.len()];
+    manifold.snap_batch(&points, &mut batch);
+
     // Verify same results
     for (ind, bat) in individual.iter().zip(batch.iter()) {
         assert!(
@@ -225,11 +226,11 @@ fn test_edge_cases_cross_repo() {
     assert!(result.is_err(), "Zero vector should be invalid");
     
     // Test NaN handling
-    let result = manifold.validate_input([f64::NAN, 0.5]);
+    let result = manifold.validate_input([f32::NAN, 0.5]);
     assert!(result.is_err(), "NaN should be invalid");
-    
+
     // Test Infinity handling
-    let result = manifold.validate_input([f64::INFINITY, 0.5]);
+    let result = manifold.validate_input([f32::INFINITY, 0.5]);
     assert!(result.is_err(), "Infinity should be invalid");
     
     // Test very small values
