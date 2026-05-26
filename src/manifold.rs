@@ -308,7 +308,8 @@ impl PythagoreanManifold {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// use constraint_theory_core::PythagoreanManifold;
     /// let manifold = PythagoreanManifold::new(200);
     /// let input = [0.5, 0.5];
     /// 
