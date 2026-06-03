@@ -4,8 +4,7 @@
 ///
 /// Simplified CDCL with 1-UIP learning scheme and non-chronological backtracking.
 /// Operates on SAT problems (boolean variables) and can be extended to CSPs.
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt;
+use std::collections::{HashMap, HashSet};
 
 /// A literal is a variable index with sign: positive = true, negative = false.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

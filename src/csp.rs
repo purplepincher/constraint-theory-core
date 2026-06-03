@@ -3,7 +3,6 @@
 /// Core constraint satisfaction types.
 use std::collections::HashMap;
 use std::fmt;
-use std::time::Instant;
 
 /// A named variable with a finite integer domain.
 #[derive(Clone, Debug)]
@@ -114,7 +113,7 @@ impl ConstraintProblem {
 
     /// Check if a partial assignment satisfies all constraints it touches.
     pub fn is_consistent(&self, assignment: &[(usize, i64)]) -> bool {
-        let mut map: HashMap<usize, i64> = assignment.iter().copied().collect();
+        let map: HashMap<usize, i64> = assignment.iter().copied().collect();
         for c in &self.constraints {
             match c {
                 Constraint::Unary { var, check, .. } => {
@@ -211,7 +210,7 @@ impl ConstraintProblem {
         let mut cs = Vec::new();
         for i in 0..n {
             for j in (i + 1)..n {
-                let d = (i as i64 - j as i64).abs();
+                let _d = (i as i64 - j as i64).abs();
                 let vars = vec![i, j];
                 cs.push(Constraint::Nary {
                     vars,
@@ -237,7 +236,7 @@ pub fn lt_fn(x: i64, y: i64) -> bool {
 
 /// Queen diagonal check: |v[0] - v[1]| != |idx0 - idx1|
 /// The actual row diff is computed at runtime from the values.
-pub fn queen_diag_fn(vals: &[i64]) -> bool {
+pub fn queen_diag_fn(_vals: &[i64]) -> bool {
     // We don't know the row indices here... this doesn't work!
     // Need a different encoding.
     // Actually: this is called with just the VALUES, not indices.

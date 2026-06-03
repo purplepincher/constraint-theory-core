@@ -1,8 +1,8 @@
 #![allow(missing_docs)]
 
 /// AC-3 arc consistency algorithm.
-use crate::csp::{Constraint, Constraint::Binary, ConstraintProblem};
-use std::collections::{HashSet, VecDeque};
+use crate::csp::{Constraint::Binary, ConstraintProblem};
+use std::collections::VecDeque;
 
 type Domain = Vec<i64>;
 

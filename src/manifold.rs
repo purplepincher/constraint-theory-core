@@ -402,7 +402,7 @@ impl PythagoreanManifold {
         }
 
         // Validate all inputs first
-        for (i, vec) in vectors.iter().enumerate() {
+        for (_i, vec) in vectors.iter().enumerate() {
             if vec[0].is_nan() || vec[1].is_nan() {
                 return Err(CTErr::NaNInput);
             }

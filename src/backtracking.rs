@@ -3,7 +3,7 @@
 /// Backtracking search with heuristics (MRV, LCV, FC, AC-3/MAC).
 use crate::ac3;
 use crate::csp::{
-    Constraint, Constraint::Binary, ConstraintProblem, SolverConfig, SolverStats, Variable,
+    Constraint::Binary, ConstraintProblem, SolverConfig, SolverStats,
 };
 use std::collections::HashMap;
 use std::time::Instant;

@@ -3,7 +3,7 @@
 /// 9x9 Sudoku solver using AC-3 + MRV + FC pipeline.
 use crate::backtracking;
 pub use crate::csp::SolverStats;
-use crate::csp::{Constraint, ConstraintProblem, SolverConfig, Variable};
+use crate::csp::{ConstraintProblem, Variable};
 
 /// Build a 9x9 Sudoku problem with optional fixed values.
 /// Input: 81-character string (. for empty, 1-9 for given).
