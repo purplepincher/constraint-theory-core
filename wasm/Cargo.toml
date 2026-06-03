@@ -1,0 +1,15 @@
+[package]
+name = "constraint-theory-core-wasm"
+version = "2.2.0"
+edition = "2021"
+description = "WASM bindings for constraint-theory-core — Pythagorean manifold snapping, KD-tree indexing, and Ricci flow"
+license = "MIT"
+repository = "https://github.com/SuperInstance/constraint-theory-core"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+constraint-theory-core = { path = ".." }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
