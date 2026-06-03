@@ -1,0 +1,17 @@
+[package]
+name = "constraint-theory-python"
+version = "2.2.0"
+edition = "2021"
+description = "Python bindings for constraint-theory-core"
+
+[lib]
+name = "constraint_theory_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+constraint-theory-core = { path = ".." }
+pyo3 = { version = "0.28", features = ["abi3-py311"] }
+
+[features]
+default = ["pyo3/abi3-py311"]
+extension-module = ["pyo3/extension-module"]

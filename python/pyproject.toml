@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.0"]
+build-backend = "maturin"
+
+[project]
+name = "constraint-theory-python"
+version = "2.2.0"
+description = "Python bindings for constraint-theory-core — deterministic manifold snapping with O(log n) KD-tree indexing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "SuperInstance"}]
+
+[project.urls]
+Homepage = "https://github.com/SuperInstance/constraint-theory-core"
+Repository = "https://github.com/SuperInstance/constraint-theory-core"
