@@ -200,6 +200,7 @@ fn bench_hidden_dim_count(c: &mut Criterion) {
     let epsilons = [1e-4, 1e-6, 1e-10, 1e-15];
 
     for epsilon in epsilons {
+        let epsilon: f64 = epsilon;
         group.bench_with_input(
             BenchmarkId::new("count", format!("1e{}", -epsilon.log10() as i32)),
             &epsilon,
@@ -347,7 +348,7 @@ fn bench_full_pipeline(c: &mut Criterion) {
             // 2. Quantize
             let result = quantizer.quantize(&lifted);
             // 3. Project (simplified)
-            black_box(&result.data[..2])
+            black_box(result.data[..2].to_vec())
         });
     });
 

@@ -3,8 +3,10 @@
 /// Built-in puzzle definitions and solvers.
 use crate::backtracking;
 use crate::csp::{
-    Constraint, Constraint::Binary, ConstraintProblem, SolverConfig, SolverStats, Variable,
+    Constraint, ConstraintProblem, Variable,
 };
+#[cfg(test)]
+use crate::csp::SolverConfig;
 use std::collections::HashMap;
 
 /// N-Queens diagonal check: |v[i] - v[j]| != |i - j| for all i != j.
@@ -128,7 +130,7 @@ pub fn solve_sudoku4x4() -> Option<Vec<i64>> {
 fn neq_fn(x: i64, y: i64) -> bool {
     x != y
 }
-fn diag_fn(x: i64, y: i64) -> bool {
+fn diag_fn(_x: i64, _y: i64) -> bool {
     true
 } // placeholder
 
