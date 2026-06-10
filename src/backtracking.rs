@@ -13,49 +13,37 @@ type Domain = Vec<i64>;
 /// Solve with basic chronological backtracking.
 pub fn solve_bt(problem: &ConstraintProblem) -> Option<HashMap<usize, i64>> {
     let mut stats = SolverStats::new();
-    let start = Instant::now();
     let mut domains: Vec<Domain> = problem.variables.iter().map(|v| v.domain.clone()).collect();
     let order: Vec<usize> = (0..problem.var_count()).collect();
-    let result = backtrack(problem, &mut domains, &order, 0, &mut stats);
-    stats.elapsed = start.elapsed();
-    result
+    backtrack(problem, &mut domains, &order, 0, &mut stats)
 }
 
 /// Solve with MRV heuristic.
 pub fn solve_bt_mrv(problem: &ConstraintProblem) -> Option<HashMap<usize, i64>> {
     let mut stats = SolverStats::new();
-    let start = Instant::now();
     let mut domains: Vec<Domain> = problem.variables.iter().map(|v| v.domain.clone()).collect();
-    let result = backtrack_mrv(problem, &mut domains, &mut stats);
-    stats.elapsed = start.elapsed();
-    result
+    backtrack_mrv(problem, &mut domains, &mut stats)
 }
 
 /// Solve with forward checking (maintains arc consistency at each node).
 pub fn solve_bt_fc(problem: &ConstraintProblem) -> Option<HashMap<usize, i64>> {
     let mut stats = SolverStats::new();
-    let start = Instant::now();
     let mut domains: Vec<Domain> = problem.variables.iter().map(|v| v.domain.clone()).collect();
     // AC-3 preprocessing
     if !ac3::enforce_ac3(problem, &mut domains) {
         return None;
     }
-    let result = backtrack_mrv_fc(problem, &mut domains, &mut stats);
-    stats.elapsed = start.elapsed();
-    result
+    backtrack_mrv_fc(problem, &mut domains, &mut stats)
 }
 
 /// Solve with Maintaining Arc Consistency (MAC).
 pub fn solve_bt_mac(problem: &ConstraintProblem) -> Option<HashMap<usize, i64>> {
     let mut stats = SolverStats::new();
-    let start = Instant::now();
     let mut domains: Vec<Domain> = problem.variables.iter().map(|v| v.domain.clone()).collect();
     if !ac3::enforce_ac3(problem, &mut domains) {
         return None;
     }
-    let result = backtrack_mac(problem, &mut domains, &mut stats);
-    stats.elapsed = start.elapsed();
-    result
+    backtrack_mac(problem, &mut domains, &mut stats)
 }
 
 /// Collect solver stats for a run.

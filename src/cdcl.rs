@@ -95,6 +95,7 @@ impl SATProblem {
 
 /// Decision level tracking for a variable.
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 struct Assignment {
     value: bool,
     level: usize,

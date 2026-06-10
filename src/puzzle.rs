@@ -130,6 +130,7 @@ pub fn solve_sudoku4x4() -> Option<Vec<i64>> {
 fn neq_fn(x: i64, y: i64) -> bool {
     x != y
 }
+#[allow(dead_code)]
 fn diag_fn(_x: i64, _y: i64) -> bool {
     true
 } // placeholder

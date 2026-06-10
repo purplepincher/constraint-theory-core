@@ -109,6 +109,7 @@ pub struct PythagoreanQuantizer {
     /// Bits per element (1 for ternary, 4-8 for others)
     pub bits: u8,
     /// Maximum denominator for Pythagorean ratios
+    #[allow(dead_code)]
     max_denominator: usize,
 }
 
