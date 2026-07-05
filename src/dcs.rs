@@ -27,7 +27,9 @@ pub const COORDINATION_ENTRY_WINDOW: f64 = 1.7;
 /// Check if a network of agents is rigidly connected (Laman condition).
 /// For agents with 6 DOF in 3D, each needs exactly 12 independent constraints.
 pub fn is_rigidly_connected(agents: usize, avg_neighbors: usize) -> bool {
-    if agents < 2 { return true; }
+    if agents < 2 {
+        return true;
+    }
     avg_neighbors >= LAMAN_NEIGHBOR_THRESHOLD
 }
 
@@ -49,7 +51,9 @@ pub fn should_use_uniform_rules(agent_count: usize) -> bool {
 /// Check if an agent can still enter coordination state.
 /// Returns true if elapsed time is within the coordination window.
 pub fn can_enter_coordination(elapsed_ms: f64, avg_latency_ms: f64) -> bool {
-    if avg_latency_ms <= 0.0 { return false; }
+    if avg_latency_ms <= 0.0 {
+        return false;
+    }
     (elapsed_ms / avg_latency_ms) <= COORDINATION_ENTRY_WINDOW
 }
 
@@ -88,8 +92,8 @@ mod tests {
 
     #[test]
     fn test_coordination_window() {
-        assert!(can_enter_coordination(100.0, 100.0));  // 1.0x < 1.7x
-        assert!(can_enter_coordination(169.0, 100.0));  // 1.69x < 1.7x
+        assert!(can_enter_coordination(100.0, 100.0)); // 1.0x < 1.7x
+        assert!(can_enter_coordination(169.0, 100.0)); // 1.69x < 1.7x
         assert!(!can_enter_coordination(171.0, 100.0)); // 1.71x > 1.7x
     }
 

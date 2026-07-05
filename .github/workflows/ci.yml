@@ -23,6 +23,9 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
       - name: Clippy
+        # Beta frequently ships new lints that are not yet stable policy.
+        # Do not let a beta-only lint block merge; stable remains the hard gate.
+        continue-on-error: ${{ matrix.rust == 'beta' }}
         run: cargo clippy -- -A clippy::empty_line_after_doc_comments
       - name: Format check
         run: cargo fmt --check

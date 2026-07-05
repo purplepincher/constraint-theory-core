@@ -2,9 +2,7 @@
 
 /// Backtracking search with heuristics (MRV, LCV, FC, AC-3/MAC).
 use crate::ac3;
-use crate::csp::{
-    Constraint::Binary, ConstraintProblem, SolverConfig, SolverStats,
-};
+use crate::csp::{Constraint::Binary, ConstraintProblem, SolverConfig, SolverStats};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -216,7 +214,7 @@ fn backtrack_mrv_fc(
         stats.nodes_visited += 1;
 
         // Save state
-        let saved_domains: Vec<Domain> = domains.iter().map(|d| d.clone()).collect();
+        let saved_domains: Vec<Domain> = domains.iter().cloned().collect();
 
         // Assign var = val
         domains[var] = vec![val];
@@ -335,7 +333,7 @@ fn backtrack_mac(
     for &val in &domains[var].clone() {
         stats.nodes_visited += 1;
 
-        let saved_domains: Vec<Domain> = domains.iter().map(|d| d.clone()).collect();
+        let saved_domains: Vec<Domain> = domains.iter().cloned().collect();
         domains[var] = vec![val];
 
         stats.propagations += 1;

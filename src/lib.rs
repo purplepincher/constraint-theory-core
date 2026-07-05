@@ -271,13 +271,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Crate version as semver components
 /// Major version component
 /// Major version component
-pub const VERSION_MAJOR: usize = 1;
+pub const VERSION_MAJOR: usize = 2;
 /// Minor version component
 /// Minor version component
-pub const VERSION_MINOR: usize = 0;
+pub const VERSION_MINOR: usize = 2;
 /// Patch version component
 /// Patch version component
-pub const VERSION_PATCH: usize = 1;
+pub const VERSION_PATCH: usize = 0;
 
 /// Hidden dimensions required for target precision
 ///
@@ -351,9 +351,9 @@ mod tests {
     #[test]
     fn test_version() {
         assert!(!VERSION.is_empty());
-        assert_eq!(VERSION_MAJOR, 1);
-        assert_eq!(VERSION_MINOR, 0);
-        assert_eq!(VERSION_PATCH, 1);
+        assert_eq!(VERSION_MAJOR, 2);
+        assert_eq!(VERSION_MINOR, 2);
+        assert_eq!(VERSION_PATCH, 0);
     }
 
     #[test]

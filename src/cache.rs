@@ -109,10 +109,13 @@ impl CachedLattice {
     }
 }
 
+/// Lattice generation result: triples and normalized vectors.
+type Lattice = (Vec<(u32, u32, u32)>, Vec<[f64; 2]>);
+
 /// Generate Pythagorean lattice for a given density.
 ///
 /// Uses Euclid's formula: a = m² - n², b = 2mn, c = m² + n²
-fn generate_pythagorean_lattice(density: usize) -> (Vec<(u32, u32, u32)>, Vec<[f64; 2]>) {
+fn generate_pythagorean_lattice(density: usize) -> Lattice {
     let mut triples = Vec::new();
     let mut vectors = Vec::new();
 
@@ -334,7 +337,7 @@ static GLOBAL_CACHE: std::sync::OnceLock<LatticeCache> = std::sync::OnceLock::ne
 /// let lattice = cache.get_or_compute(200);
 /// ```
 pub fn global_cache() -> &'static LatticeCache {
-    GLOBAL_CACHE.get_or_init(|| LatticeCache::with_default_capacity())
+    GLOBAL_CACHE.get_or_init(LatticeCache::with_default_capacity)
 }
 
 /// Clear the global lattice cache.

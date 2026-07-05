@@ -2,11 +2,9 @@
 
 /// Built-in puzzle definitions and solvers.
 use crate::backtracking;
-use crate::csp::{
-    Constraint, ConstraintProblem, Variable,
-};
 #[cfg(test)]
 use crate::csp::SolverConfig;
+use crate::csp::{Constraint, ConstraintProblem, Variable};
 use std::collections::HashMap;
 
 /// N-Queens diagonal check: |v[i] - v[j]| != |i - j| for all i != j.
@@ -74,11 +72,11 @@ fn count_nqueens_bt(n: usize, board: &mut [i64], row: usize, count: &mut u64) {
 }
 
 fn is_safe(board: &[i64], row: usize, col: i64) -> bool {
-    for r in 0..row {
-        if board[r] == col {
+    for (r, &board_r) in board.iter().enumerate().take(row) {
+        if board_r == col {
             return false;
         }
-        if (board[r] - col).abs() == (r as i64 - row as i64).abs() {
+        if (board_r - col).abs() == (r as i64 - row as i64).abs() {
             return false;
         }
     }

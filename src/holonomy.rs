@@ -100,10 +100,10 @@ fn matrix_multiply(a: &RotationMatrix, b: &RotationMatrix) -> RotationMatrix {
 /// Compute the Frobenius norm of a matrix's deviation from identity.
 fn deviation_from_identity(matrix: &RotationMatrix) -> f64 {
     let mut sum = 0.0;
-    for i in 0..3 {
-        for j in 0..3 {
+    for (i, row) in matrix.iter().enumerate().take(3) {
+        for (j, &val) in row.iter().enumerate().take(3) {
             let expected = if i == j { 1.0 } else { 0.0 };
-            let diff = matrix[i][j] - expected;
+            let diff = val - expected;
             sum += diff * diff;
         }
     }

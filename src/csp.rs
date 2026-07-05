@@ -253,7 +253,6 @@ pub fn queen_diag_fn(_vals: &[i64]) -> bool {
 /// Solution: `queen_diag` returns nothing. Instead, the nqueens_problem function
 /// in puzzle.rs will use a different encoding. The diagonal info is embedded
 /// in the constraint via variable ordering.
-
 /// Solver configuration: heuristic flags.
 #[derive(Clone, Debug)]
 pub struct SolverConfig {

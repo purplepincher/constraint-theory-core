@@ -428,7 +428,7 @@ impl PythagoreanQuantizer {
             9.0 / 41.0,
             40.0 / 41.0,
             0.5,
-            0.7071067811865476, // sqrt(2)/2
+            std::f64::consts::FRAC_1_SQRT_2, // sqrt(2)/2
         ];
 
         let mut best = value;
@@ -545,7 +545,7 @@ impl Rational {
     /// Check if this is a Pythagorean ratio (part of a Pythagorean triple).
     pub fn is_pythagorean(&self) -> bool {
         // Check if numerator² + something² = denominator²
-        let a = self.num.unsigned_abs() as u64;
+        let a = self.num.unsigned_abs();
         let c = self.den;
 
         if c == 0 {

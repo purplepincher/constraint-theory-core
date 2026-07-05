@@ -17,7 +17,7 @@ impl Lit {
     pub fn sign(self) -> bool {
         self.0 > 0
     }
-    pub fn not(self) -> Lit {
+    pub fn negate(self) -> Lit {
         Lit(-self.0)
     }
 }
@@ -271,7 +271,7 @@ impl CDCL {
             let dl = self.level_of_var(l.var());
             dl < self.current_level() || l == final_lit
         });
-        learnt.push(final_lit.not());
+        learnt.push(final_lit.negate());
 
         let bt_level = learnt
             .iter()
@@ -339,11 +339,8 @@ impl CDCL {
                 self.clauses.push(learnt.clone());
                 self.learnts.push(self.clauses.len() - 1);
                 // BCP on the new learnt clause (it's unit at this point)
-                if let Some(lit) = learnt.is_unit(&self.assignment) {
-                    self.enqueue(lit, Some(self.clauses.len() - 1));
-                } else {
-                    return None;
-                }
+                let lit = learnt.is_unit(&self.assignment)?;
+                self.enqueue(lit, Some(self.clauses.len() - 1));
             } else {
                 // No conflict — decide
                 match self.decide() {

@@ -312,7 +312,7 @@ fn snap_to_rational(value: f64) -> f64 {
         16.0 / 65.0,
         63.0 / 65.0, // 16-63-65 triangle
         0.5,
-        0.7071067811865476, // Common ratios (sqrt(2)/2)
+        std::f64::consts::FRAC_1_SQRT_2, // Common ratios (sqrt(2)/2)
     ];
 
     // Find nearest ratio
