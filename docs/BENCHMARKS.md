@@ -57,7 +57,7 @@ The primary operation in ConstraintTheory is "snapping" a continuous vector to t
 
 ```bash
 # Clone repository
-git clone https://github.com/SuperInstance/constraint-theory
+git clone https://github.com/purplepincher/constraint-theory-core
 cd constraint-theory
 
 # Build in release mode
@@ -229,7 +229,7 @@ Memory scales linearly with manifold size, as expected for O(n) space complexity
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone repository
-git clone https://github.com/SuperInstance/constraint-theory
+git clone https://github.com/purplepincher/constraint-theory-core
 cd constraint-theory
 ```
 

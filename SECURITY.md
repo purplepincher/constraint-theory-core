@@ -72,7 +72,7 @@ We take the security of constraint-theory-core seriously. If you believe you hav
 
 Instead, please report them via GitHub Security Advisories:
 
-1. Go to https://github.com/SuperInstance/constraint-theory-core/security/advisories/new
+1. Go to https://github.com/purplepincher/constraint-theory-core/security/advisories/new
 2. Fill out the form with details about the vulnerability
 
 You can also email us at: security@superinstance.ai
@@ -182,7 +182,7 @@ We appreciate security researchers who help keep our project safe. Contributors 
 ## Contact
 
 For general security questions (non-vulnerability reports):
-- Open a discussion: https://github.com/SuperInstance/constraint-theory-core/discussions
+- Open a discussion: https://github.com/purplepincher/constraint-theory-core/discussions
 - Email: security@superinstance.ai
 
 ---

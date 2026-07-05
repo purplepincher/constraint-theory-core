@@ -69,7 +69,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ### Step 2: Clone the Repository
 
 ```bash
-git clone https://github.com/SuperInstance/constraint-theory
+git clone https://github.com/purplepincher/constraint-theory-core
 cd constraint-theory
 ```
 

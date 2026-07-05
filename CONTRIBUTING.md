@@ -32,7 +32,7 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 ### Building and Testing
 
 ```bash
-git clone https://github.com/SuperInstance/constraint-theory-core.git
+git clone https://github.com/purplepincher/constraint-theory-core.git
 cd constraint-theory-core
 cargo build --release
 cargo test --release
@@ -125,7 +125,7 @@ cargo bench
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/SuperInstance/constraint-theory-core/discussions)
-- Check existing [Issues](https://github.com/SuperInstance/constraint-theory-core/issues)
+- Open a [Discussion](https://github.com/purplepincher/constraint-theory-core/discussions)
+- Check existing [Issues](https://github.com/purplepincher/constraint-theory-core/issues)
 
 Thank you for contributing!
