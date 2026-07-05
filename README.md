@@ -18,7 +18,8 @@ and backed by a KD-tree for `O(log N)` lookup.
 cargo add constraint-theory-core
 ```
 
-Zero runtime dependencies. Pure Rust. `#![forbid(unsafe_code)]` on the public API.
+Zero runtime dependencies. Pure Rust. The public API is safe; SIMD batch paths use
+architecture-specific intrinsics internally and are wrapped in safe interfaces.
 
 ## Quick Start
 
