@@ -392,9 +392,9 @@ let (snapped, noise) = manifold.snap(normalized);
 
 ### Explore the Documentation
 
-- `docs/MATHEMATICAL_FOUNDATIONS_DEEP_DIVE.md` - Theory
 - `docs/BENCHMARKS.md` - Performance details
-- `docs/DISCLAIMERS.md` - Important clarifications
+- `docs/PERFORMANCE.md` - Optimization notes
+- `docs/research-notes/` - Historical research drafts and integration notes
 
 ### Try the Examples
 
