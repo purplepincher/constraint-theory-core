@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Three README claims that didn't hold up against actually running the
+  code: the opening `0.6² + 0.8² = 1.0000000000000002` IEEE-754 example
+  was simply wrong (it's exactly `1.0` in both f32 and f64) — replaced
+  with the real drift case (`normalize(1,1)` → `|v|² = 0.99999994` in
+  f32); the Quick Start's `snap([0.577, 0.816])` example didn't actually
+  return `[0.6, 0.8]` at density 200 — replaced with verified
+  `snap([3,4]) → [0.6,0.8]` and `snap([5,12]) → 5-12-13`; `new(200)`'s
+  state count was documented as "~1000" but is actually **40,384**
+  (~40x off) — corrected, and the unverified "0.36° angular resolution"
+  figure was dropped rather than guessed at.
+
+### Noted, not yet fixed
+- The published crate's `repository` metadata on crates.io still points
+  to `SuperInstance/constraint-theory-core`, not `purplepincher` — a
+  registry-metadata divergence from the actual source location.
+
 ## [2.2.0] - 2026-07-05
 
 ### Changed
@@ -105,5 +124,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[1.0.1]: https://github.com/SuperInstance/constraint-theory-core/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/SuperInstance/constraint-theory-core/releases/tag/v1.0.0
+[1.0.1]: https://github.com/purplepincher/constraint-theory-core/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/purplepincher/constraint-theory-core/releases/tag/v1.0.0
