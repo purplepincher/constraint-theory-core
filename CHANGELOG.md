@@ -5,9 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.2.0] - 2026-07-06
+
+Matches the crate already published on crates.io at 2.2.0 (verified via
+the crates.io API) — no code changed in this grouping, only documentation
+accuracy.
+
+### Changed
+- Repository metadata now points to `purplepincher/constraint-theory-core`.
+- Trimmed documentation to production-crate essentials; moved research drafts,
+  ecosystem pitches, and speculative synergy notes to `docs/research-notes/`.
+- Folded important disclaimers into the README's "Honest Limitations" section.
+- Updated `VERSION_MAJOR/MINOR/PATCH` constants to match the crate version.
 
 ### Fixed
+- Resolved `clippy` warnings on current stable and beta toolchains.
+- Applied `rustfmt` so `cargo fmt --check` passes.
+- Made the beta CI clippy step non-blocking while keeping stable as the hard gate.
 - Three README claims that didn't hold up against actually running the
   code: the opening `0.6² + 0.8² = 1.0000000000000002` IEEE-754 example
   was simply wrong (it's exactly `1.0` in both f32 and f64) — replaced
@@ -23,20 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The published crate's `repository` metadata on crates.io still points
   to `SuperInstance/constraint-theory-core`, not `purplepincher` — a
   registry-metadata divergence from the actual source location.
-
-## [2.2.0] - 2026-07-05
-
-### Changed
-- Repository metadata now points to `purplepincher/constraint-theory-core`.
-- Trimmed documentation to production-crate essentials; moved research drafts,
-  ecosystem pitches, and speculative synergy notes to `docs/research-notes/`.
-- Folded important disclaimers into the README's "Honest Limitations" section.
-- Updated `VERSION_MAJOR/MINOR/PATCH` constants to match the crate version.
-
-### Fixed
-- Resolved `clippy` warnings on current stable and beta toolchains.
-- Applied `rustfmt` so `cargo fmt --check` passes.
-- Made the beta CI clippy step non-blocking while keeping stable as the hard gate.
 
 ## [1.0.1] - 2025-01-27
 
