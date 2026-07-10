@@ -1,353 +1,179 @@
 # Performance Characteristics
 
-**Version:** 1.0.1  
-**Last Updated:** 2025-01-17
+**Crate version:** 2.2.0
+**Last reviewed:** 2026-07-09 (numbers re-measured; see `docs/BENCHMARKS.md`)
 
 ---
 
 ## Overview
 
-This document describes the performance characteristics of `constraint-theory-core`, including:
-
-- Time and space complexity analysis
-- Memory usage patterns
-- SIMD optimization strategies
-- Platform-specific performance considerations
+This document describes the performance characteristics of
+`constraint-theory-core`. All timings are illustrative and were measured on one
+development machine in a release build, single-threaded — re-run the bundled
+examples on your own hardware before relying on them. The structural facts
+(complexity, state counts, and that the SIMD batch path is slower than the
+scalar KD-tree path) are not machine-dependent.
 
 ---
 
 ## Complexity Analysis
 
-### Core Operations
+### Core operations
 
-| Operation | Time Complexity | Space Complexity | Notes |
-|-----------|-----------------|------------------|-------|
-| `PythagoreanManifold::new()` | O(n log n) | O(n) | One-time build cost |
-| `snap()` single vector | O(log n) | O(1) | KD-tree lookup |
-| `snap_batch_simd()` | O(m log n) | O(m) | m = batch size |
-| `snap_batch()` scalar | O(m log n) | O(m) | Fallback for no SIMD |
+| Operation                          | Time             | Space   | Notes                            |
+|------------------------------------|------------------|---------|----------------------------------|
+| `PythagoreanManifold::new(density)`| O(density²)      | O(N)    | Enumerate primitive triples      |
+| `snap()` (single vector)           | O(log N)         | O(1)    | KD-tree lookup; recommended      |
+| `snap_batch()` (scalar)            | O(m log N)       | O(m)    | KD-tree per vector; recommended  |
+| `snap_batch_simd()` (AVX2)         | O(m × N)         | O(m)    | Brute-force; **slower for N ≥ ~50** |
 
-Where `n` is the manifold density (number of valid states) and `m` is the batch size.
+`N` is the number of valid states; `m` is the batch size.
 
-### KD-Tree Operations
+### KD-tree operations
 
-| Operation | Average | Worst Case | Notes |
-|-----------|---------|------------|-------|
-| Build | O(n log n) | O(n log n) | Deterministic |
-| Nearest neighbor | O(log n) | O(n) | Degenerate case rare |
-| Memory overhead | O(n) | O(n) | Linear in state count |
-
----
-
-## Memory Usage
-
-### Manifold Memory
-
-The `PythagoreanManifold` struct uses memory proportional to the number of valid Pythagorean states:
-
-```
-Memory ≈ density × 5 × 2 × 4 bytes (f32) + KD-tree overhead
-       ≈ density × 40 bytes + ~20% overhead
-```
-
-| Density | States | Memory (approx) |
-|---------|--------|-----------------|
-| 50 | ~250 | 12 KB |
-| 100 | ~500 | 24 KB |
-| 200 | ~1000 | 48 KB |
-| 500 | ~2500 | 120 KB |
-| 1000 | ~5000 | 240 KB |
-
-### Per-State Breakdown
-
-Each valid state stores:
-- `[f32; 2]`: 8 bytes for the normalized vector
-- KD-tree node: ~12 bytes overhead
-- **Total**: ~20 bytes per state
-
-### Memory Allocation Pattern
-
-```
-Manifold Creation:
-  └── Vec::with_capacity(density × 5)  // Pre-allocated
-  └── KDTree::build()                   // Single allocation
-
-Snap Operation:
-  └── No heap allocations (zero-allocation hot path)
-
-Batch Processing:
-  └── Results vector allocated once
-  └── SIMD operations use stack-allocated arrays
-```
+| Operation        | Average   | Worst case | Notes                |
+|------------------|-----------|------------|----------------------|
+| Build            | O(N log N)| O(N log N) | Deterministic        |
+| Nearest neighbour| O(log N)  | O(N)       | Degenerate input rare|
 
 ---
 
-## SIMD Optimization
+## State counts (deterministic)
 
-### Supported Architectures
+`density` is the max `m` in Euclid's formula; the count is exact (see
+`docs/BENCHMARKS.md` §1):
 
-| Architecture | Extension | Parallelism | Status |
-|--------------|-----------|-------------|--------|
-| x86_64 | AVX2 | 8× f32 | ✅ Implemented |
-| x86_64 | AVX-512 | 16× f32 | 🔜 Planned |
-| ARM64 | NEON | 4× f32 | 🔜 Planned |
+| Density | States   |
+|---------|---------:|
+| 50      |    2,494 |
+| 100     |   10,004 |
+| 200     |   40,384 |
+| 500     |  252,829 |
 
-### SIMD Performance Gains
+> Earlier revisions of this document listed "density 200 ≈ 1000 states". That
+> was incorrect by ~40×.
 
-AVX2 SIMD provides significant speedup for batch operations:
+---
 
-```
-Scalar:   1 vector at a time
-AVX2:     8 vectors at a time (8× theoretical max)
-```
+## Memory usage
 
-| Batch Size | Scalar (μs) | SIMD (μs) | Speedup |
-|------------|-------------|-----------|---------|
-| 100 | 10 | 2 | 5.0× |
-| 1,000 | 100 | 15 | 6.7× |
-| 10,000 | 1,000 | 120 | 8.3× |
-| 100,000 | 10,000 | 1,100 | 9.1× |
+The dominant, exactly-knowable term is the state vector
+`Vec<[f32; 2]>` = **8 · N bytes**:
 
-### When SIMD is Used
+| Density | States   | `valid_states` vector |
+|---------|---------:|----------------------:|
+| 50      |   2,494  |            ~20 KB     |
+| 100     |  10,004  |            ~78 KB     |
+| 200     |  40,384  |           ~315 KB     |
+| 500     | 252,829  |           ~1.9 MB     |
+
+On top of that, the KD-tree holds its own data: leaf nodes store a copy of
+their points (`[f32; 2]`) plus a `Vec<usize>` of indices, and internal nodes
+carry split metadata and two boxed children. ⚠️ This roughly **doubles to
+triples** the per-state footprint versus the raw `8 · N` figure above, so the
+true resident size at density 200 is on the order of **~0.7–1.0 MB** (not the
+"~48 KB" claimed in earlier revisions). Memory still scales linearly with `N`.
+
+### Allocation pattern
+
+- Manifold creation: one `Vec` for states + a single KD-tree build (recursive).
+- `snap()` hot path: no heap allocation.
+- Batch paths: the results `Vec` is allocated by the caller (`*_into`) or by the
+  convenience method.
+
+---
+
+## SIMD: measured reality
+
+⚠️ The SIMD batch path (`snap_batch_simd`, AVX2 on x86_64) does a **brute-force
+scan over every state** — it does not use the KD-tree. Measured
+(`cargo run --release --example simd`, 2026-07-09):
+
+| Density | Scalar `snap_batch` | SIMD `snap_batch_simd` | SIMD / scalar |
+|---------|--------------------:|-----------------------:|--------------:|
+| 50      |          106 ns/vec |              526 ns/vec|     0.20×     |
+| 100     |          131 ns/vec |            2,198 ns/vec|     0.06×     |
+| 200     |          182 ns/vec |            8,018 ns/vec|     0.02×     |
+| 500     |        1,172 ns/vec |           56,057 ns/vec|     0.02×     |
+
+So SIMD is **not** faster; it is one to two orders of magnitude slower than the
+scalar KD-tree path at these sizes. 🔮 Making the SIMD path competitive would
+require restructuring it to use an indexed/tree lookup (or delegating to the
+scalar path). Until then, prefer `snap_batch()`.
+
+There is **no** AVX-512 or NEON path today (the earlier "AVX-512 / NEON
+planned/implemented" table was aspirational, not real). 🔮
+
+---
+
+## Throughput (scalar, KD-tree path)
+
+Measured single-threaded, release build (2026-07-09):
+
+| Operation               | Latency        | Throughput     |
+|-------------------------|----------------|----------------|
+| Single `snap()` (d=200) | ~170 ns        | ~5.9 M ops/sec |
+| `snap_batch` (d=200)    | ~182 ns/vec    | ~5.5 M ops/sec |
+| `snap_batch` (d=500)    | ~1172 ns/vec   | ~0.85 M ops/sec|
+
+(The "~100 ns / ~10 M ops/sec" headline quoted in older material is the right
+order of magnitude for small densities but is not a guarantee.)
+
+---
+
+## Multi-threading
+
+The manifold is immutable after construction, so the recommended pattern is to
+share one `Arc<PythagoreanManifold>` across threads and call `snap`/`snap_batch`
+without locking:
 
 ```rust
-// SIMD is automatically used when:
-// 1. x86_64 architecture
-// 2. AVX2 CPU feature detected at runtime
-// 3. Batch size >= 8 vectors
-
-manifold.snap_batch_simd(&vectors);  // Uses SIMD automatically
-manifold.snap(vector);               // Uses scalar (single vector)
-```
-
-### SIMD Detection
-
-```rust
-// Runtime detection
-#[cfg(target_arch = "x86_64")]
-if is_x86_feature_detected!("avx2") {
-    // AVX2 path
-} else {
-    // Scalar fallback
-}
-```
-
----
-
-## Cache Performance
-
-### Cache Hierarchy
-
-The manifold and KD-tree are designed for cache efficiency:
-
-```
-L1 Cache (32 KB):
-  └── Hot data: current search path
-  └── ~100 states fit comfortably
-
-L2 Cache (256 KB - 1 MB):
-  └── Entire manifold (density <= 500)
-  └── KD-tree nodes
-
-L3 Cache (8 MB - 64 MB):
-  └── Multiple manifolds
-  └── Batch processing buffers
-```
-
-### Cache-Friendly Design
-
-1. **Contiguous Memory**: All states stored in `Vec<[f32; 2]>`
-2. **KD-tree Layout**: Array-based for cache locality
-3. **Batch Processing**: Process vectors sequentially
-4. **Zero-Copy**: No unnecessary allocations in hot paths
-
----
-
-## Throughput Benchmarks
-
-### Single-Threaded Performance
-
-| Operation | Throughput | Latency |
-|-----------|------------|---------|
-| Single snap | ~10 M ops/sec | ~100 ns |
-| Batch (1K) | ~8 M ops/sec | ~125 ns |
-| Batch (100K) | ~9 M ops/sec | ~111 ns |
-
-### Multi-Threaded Scaling
-
-For multi-threaded workloads, each thread should have its own manifold:
-
-```rust
-// Good: Each thread has its own manifold (lock-free)
 let manifold = Arc::new(PythagoreanManifold::new(200));
-let handles: Vec<_> = (0..num_threads)
-    .map(|_| {
-        let m = manifold.clone();  // Arc::clone
-        thread::spawn(move || {
-            // Use m without synchronization
-        })
-    })
-    .collect();
-
-// Avoid: Shared mutable state with locks
+// each thread: manifold.clone() then call snap()/snap_batch() — lock-free
 ```
 
-**Scaling Results** (Manifold density 200):
-
-| Threads | Throughput | Scaling |
-|---------|------------|---------|
-| 1 | 10 M ops/sec | 1.0× |
-| 2 | 19 M ops/sec | 1.9× |
-| 4 | 37 M ops/sec | 3.7× |
-| 8 | 72 M ops/sec | 7.2× |
+⚠️ No multi-threaded scaling measurements have been taken for this crate. The
+"1→2→4→8 thread ≈ linear scaling" table in earlier revisions was projected, not
+measured. 🔮
 
 ---
 
-## Latency Distribution
+## Latency distribution
 
-### P50/P95/P99 Latencies
-
-Measured over 1,000,000 operations with density=200:
-
-| Percentile | Latency |
-|------------|---------|
-| P50 | 95 ns |
-| P75 | 102 ns |
-| P90 | 115 ns |
-| P95 | 128 ns |
-| P99 | 185 ns |
-| P99.9 | 320 ns |
-| Max | 1.2 μs |
-
-### Tail Latency Causes
-
-1. **Cache misses**: First access to manifold data
-2. **Branch misprediction**: KD-tree traversal
-3. **CPU frequency scaling**: Thermal throttling
+⚠️ No percentile (P50/P95/P99) measurements have been taken. Earlier revisions
+listed specific P50/P95/P99 figures; those were not reproducible from the
+codebase and have been removed. The mean single-`snap` latency is ~170 ns at
+density 200 (above).
 
 ---
 
-## Optimization Recommendations
+## Choosing a density
 
-### Hot Path Optimization
+| Use case            | Density | States   | `valid_states` size |
+|---------------------|---------|---------:|--------------------:|
+| Low memory / fast   | 50–100  | 2.5K–10K | ~20–78 KB           |
+| Balanced (default)  | 200     | ~40K     | ~315 KB             |
+| High precision      | 500     | ~253K    | ~1.9 MB             |
 
-```rust
-// ✅ Good: Reuse manifold, batch operations
-let manifold = PythagoreanManifold::new(200);
-let results = manifold.snap_batch_simd(&vectors);
-
-// ❌ Avoid: Creating manifold repeatedly
-for vector in vectors {
-    let manifold = PythagoreanManifold::new(200);  // Slow!
-    let _ = manifold.snap(vector);
-}
-```
-
-### Memory Optimization
-
-```rust
-// ✅ Good: Pre-allocate results buffer
-let mut results = vec![([0.0, 0.0], 0.0f32); vectors.len()];
-manifold.snap_batch_simd_into(&vectors, &mut results);
-
-// ❌ Avoid: Allocation per call
-for vector in vectors {
-    let result = manifold.snap(vector);  // Allocates tuple
-}
-```
-
-### Density Selection
-
-| Use Case | Recommended Density | States | Memory |
-|----------|---------------------|--------|--------|
-| High precision | 500-1000 | 2.5K-5K | 120-240 KB |
-| Balanced | 200 | ~1K | 48 KB |
-| Low memory | 50-100 | 250-500 | 12-24 KB |
-| Real-time | 200 | ~1K | 48 KB |
+Higher density → finer angular resolution but more memory and slightly slower
+queries (logarithmic).
 
 ---
 
-## Platform Considerations
+## Platform considerations
 
-### x86_64 (Intel/AMD)
-
-```rust
-// Compile with AVX2 support
-RUSTFLAGS="-C target-cpu=native" cargo build --release
-
-// Check AVX2 at runtime
-#[cfg(target_arch = "x86_64")]
-if is_x86_feature_detected!("avx2") {
-    println!("AVX2 available");
-}
-```
-
-### ARM64 (Apple Silicon, AWS Graviton)
-
-- SIMD uses NEON (4× f32 parallelism)
-- Performance comparable to x86_64 without AVX2
-- Native ARM64 builds recommended
-
-### WebAssembly
-
-- SIMD support via `wasm-simd` feature
-- Performance: ~50% of native
-- Use for web-based applications
-
----
-
-## Benchmarking Your Setup
-
-### Quick Benchmark
+- **x86_64**: scalar KD-tree path is the fast path; AVX2 SIMD batch path
+  available but slower (see above).
+- **Other architectures (ARM, WebAssembly)**: the SIMD path falls back to a
+  scalar brute-force scan — use `snap_batch()` instead. A `wasm/` target is
+  present in the repo.
 
 ```bash
-# Run built-in benchmarks
-cargo test --release -- --ignored test_kdtree_performance
-```
-
-### Custom Benchmark
-
-```rust
-use std::time::Instant;
-
-fn benchmark(manifold: &PythagoreanManifold, iterations: usize) -> f64 {
-    // Warmup
-    for _ in 0..1000 {
-        let _ = manifold.snap([0.6, 0.8]);
-    }
-
-    // Measure
-    let start = Instant::now();
-    for _ in 0..iterations {
-        let _ = manifold.snap([0.6, 0.8]);
-    }
-    let elapsed = start.elapsed();
-
-    elapsed.as_nanos() as f64 / iterations as f64
-}
+# Build with native CPU features enabled
+RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
 
 ---
 
-## Performance Targets
-
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Single snap latency | < 100 ns | ~100 ns | ✅ |
-| Batch throughput | > 10 M ops/sec | ~9 M ops/sec | ⚠️ |
-| Memory efficiency | < 100 bytes/state | ~80 bytes/state | ✅ |
-| SIMD speedup | > 8× | ~9× | ✅ |
-
----
-
-## Future Optimizations
-
-1. **AVX-512 Support**: 16× parallelism for supported CPUs
-2. **GPU Offloading**: CUDA/WebGPU for massive batches
-3. **Persistent KD-tree**: Mmap-able for large manifolds
-4. **Approximate Mode**: Sub-50ns with bounded error
-
----
-
-**Document Version:** 1.0  
-**Next Review:** 2025-04-01
+**Document version:** 2.2.0-perf
+**Next review:** when the SIMD path is restructured, or on the next release.
