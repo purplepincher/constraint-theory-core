@@ -155,10 +155,7 @@ fn main() {
 
     // Scalar (KD-tree) is the recommended fast path
     println!("Scalar (KD-tree) is the recommended path:");
-    println!(
-        "  Scalar per-tile:  {:.2} ns",
-        scalar_avg_per_tile_ns
-    );
+    println!("  Scalar per-tile:  {:.2} ns", scalar_avg_per_tile_ns);
     println!(
         "  SIMD per-tile:    {:.2} ns (brute-force; slower at density 200)",
         simd_avg_per_tile_ns
@@ -201,7 +198,10 @@ fn main() {
     // SIMD batch is brute-force over all states; there is no 8x target — it is
     // expected to be slower than the KD-tree scalar path at realistic sizes.
     if speedup >= 1.0 {
-        println!("  [INFO] SIMD/scalar ratio: {:.2}x (SIMD faster here)", speedup);
+        println!(
+            "  [INFO] SIMD/scalar ratio: {:.2}x (SIMD faster here)",
+            speedup
+        );
     } else {
         println!(
             "  [INFO] SIMD/scalar ratio: {:.2}x (scalar KD-tree faster; expected at density 200)",
