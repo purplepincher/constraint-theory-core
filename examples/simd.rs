@@ -68,7 +68,9 @@ fn main() {
 
     // Example 3: Batch size performance comparison
     println!("--- Example 3: Batch Size Performance ---");
-    let batch_sizes = [8, 16, 64, 256, 1024, 4096, 16384];
+    println!("Note: the SIMD batch path brute-force scans all states, so it is");
+    println!("slower than the KD-tree scalar path at density 200 (40,384 states).\n");
+    let batch_sizes = [8, 16, 64, 256, 1024];
 
     println!(
         "{:>10} {:>12} {:>12} {:>8}",
@@ -115,7 +117,7 @@ fn main() {
     println!("--- Example 4: Memory-Efficient Processing ---");
     println!("For large datasets, pre-allocate buffers and reuse:\n");
 
-    let large_batch_size = 100_000;
+    let large_batch_size = 2_000;
     let mut vectors = vec![[0.0f32, 0.0]; large_batch_size];
     let mut results = vec![([0.0f32, 0.0], 0.0f32); large_batch_size];
 
@@ -126,7 +128,7 @@ fn main() {
     }
 
     // Process multiple times (simulating streaming)
-    let iterations = 10;
+    let iterations = 3;
     let start = Instant::now();
 
     for _ in 0..iterations {
@@ -151,7 +153,7 @@ fn main() {
     println!("--- Example 5: SIMD vs Manifold Density ---");
     println!("SIMD speedup varies with manifold size:\n");
 
-    let batch_size = 10_000;
+    let batch_size = 1_000;
     let vectors: Vec<[f32; 2]> = (0..batch_size)
         .map(|i| {
             let angle = (i as f32) * 0.001;

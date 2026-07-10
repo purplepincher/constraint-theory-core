@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Production-hardening pass. No public API was changed; this is documentation
+and example correctness work, verified against a clean `cargo build --release`
+and `cargo test` (262 passed, 0 failed, 2 ignored).
+
+### Fixed
+- `examples/full_integration.rs` panicked on a 2-D point (`&encoded[..4]` on a
+  2-element vector); the preview slice is now length-guarded.
+- `examples/bench_comparison.rs` crashed at ≥10,004 points (toy KD-tree wrote
+  past an `n`-slot buffer and then "compacted" away the child indices) and
+  reported a bogus ~0 ns/op brute-force baseline because the result was not
+  `black_box`-ed. Both fixed; re-measured KD-tree is 65–660× faster than brute
+  force across density 100–500.
+- `examples/batch.rs`, `simd.rs`, `bench.rs`, `bench_profiled.rs` fed 100k–1M
+  vectors into the brute-force SIMD path and ran for minutes printing
+  "Speedup: 0.00x". Shrunk to runnable sizes and added honest framing.
+
+### Changed
+- Corrected false SIMD speedup claims throughout: `snap_batch_simd` is a
+  brute-force scan over every state (no KD-tree) and is ~44× slower than the
+  scalar `snap_batch` at density 200. Source doc-comments (`src/simd.rs`,
+  `src/manifold.rs`, `src/lib.rs`), `README.md`, `docs/BENCHMARKS.md`, and
+  `docs/PERFORMANCE.md` now state this, and the complexity table no longer
+  lists the SIMD batch as `O(n log N)`.
+- Rewrote `docs/BENCHMARKS.md` and `docs/PERFORMANCE.md` around numbers
+  measured on 2026-07-09 (release build), with reproduction commands and
+  ✅/⚠️/🔮 status markers. Removed non-reproducible P50/P95/P99 and
+  multi-threaded scaling tables and the false AVX-512/NEON "planned" claims.
+- Rewrote `README.md` as an engineering guide with a real Status section.
+
 ## [2.2.0] - 2026-07-06
 
 Matches the crate already published on crates.io at 2.2.0 (verified via

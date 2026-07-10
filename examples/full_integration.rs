@@ -72,7 +72,14 @@ fn main() {
 
     println!("\nEncoding point {:?}", point);
     println!("  Encoded to {} dimensions", encoded.len());
-    println!("  First 4 components: {:?}", &encoded[..4]);
+    // The encoder preserves the input dimensionality (2-D here), so guard the
+    // preview slice rather than assuming at least 4 components.
+    let preview_len = encoded.len().min(4);
+    println!(
+        "  First {} components: {:?}",
+        preview_len,
+        &encoded[..preview_len]
+    );
 
     let k = hidden_dim_count(1e-6);
     let lifted = lift_to_hidden(&point, k);
