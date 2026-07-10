@@ -51,8 +51,9 @@
 //!
 //! | Operation | Complexity | Notes |
 //! |-----------|------------|-------|
-//! | Single snap | O(log N) | KD-tree lookup |
-//! | Batch snap | O(n log N) | SIMD optimized |
+//! | Single snap (`snap`) | O(log N) | KD-tree lookup |
+//! | Scalar batch (`snap_batch`) | O(m log N) | KD-tree per vector |
+//! | SIMD batch (`snap_batch_simd`) | O(m × N) | brute-force; slower than scalar for N ≥ ~50 |
 //! | Holonomy check | O(n²) | Spectral method |
 //! | Lattice cache | O(1) | Thread-safe |
 //!
@@ -96,9 +97,11 @@
 //! assert!(result.check_unit_norm(0.1));
 //! ```
 //!
-//! # SIMD Batch Processing
+//! # Batch Processing
 //!
-//! For high-throughput applications, use SIMD batch processing:
+//! For multiple vectors, batch snapping avoids repeated call overhead. The
+//! scalar `snap_batch` path (KD-tree per vector) is recommended for production;
+//! `snap_batch_simd` exists but is a brute-force scan (see its docs):
 //!
 //! ```
 //! use constraint_theory_core::PythagoreanManifold;

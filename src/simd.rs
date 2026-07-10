@@ -1,13 +1,18 @@
 //! SIMD-optimized operations for constraint theory
 //!
-//! This module provides SIMD-accelerated implementations of the core
-//! Pythagorean snapping operation, achieving 8-16x speedup over scalar code.
+//! This module provides an AVX2 batch snapping path. ⚠️ Note: the SIMD batch
+//! path performs a **brute-force linear scan over every manifold state** — it
+//! does NOT use the KD-tree. It is therefore O(batch × states) and, for the
+//! manifold sizes used in practice (e.g. 40,384 states at density 200), it is
+//! *slower* than the scalar [`PythagoreanManifold::snap`][crate::PythagoreanManifold::snap]
+//! path, which is O(log N). Treat the SIMD path as experimental; prefer
+//! [`PythagoreanManifold::snap_batch`][crate::PythagoreanManifold::snap_batch]
+//! for production batch snapping.
 //!
 //! # Architecture Support
 //!
-//! - x86_64: AVX2 (8x f32 parallelism)
-//! - x86_64: AVX-512 (16x f32 parallelism) when available
-//! - ARM: NEON (4x f32 parallelism)
+//! - x86_64: AVX2 (8× f32 parallelism) when available, scalar fallback otherwise
+//! - Non-x86_64: scalar fallback
 //!
 //! # Safety
 //!
@@ -25,11 +30,11 @@ pub fn is_avx2_available() -> bool {
 
 /// SIMD-optimized batch snapping using AVX2 with true SIMD comparisons
 ///
-/// Processes 8 vectors simultaneously using AVX2 intrinsics with fully
-/// vectorized comparisons. This achieves maximum SIMD parallelism by:
-/// 1. Loading 8 normalized vectors at once
-/// 22. Using SIMD comparisons instead of scalar fallback
-/// 3. Horizontal max reduction for finding best matches
+/// Processes 8 query vectors simultaneously: for each batch it scans **every**
+/// manifold state and keeps the best resonance per vector via SIMD compares and
+/// horizontal-style blend updates. This is a brute-force O(batch × states) scan
+/// (no KD-tree), so it is slower than the scalar KD-tree path for realistic
+/// manifold sizes.
 ///
 /// # Safety
 ///
