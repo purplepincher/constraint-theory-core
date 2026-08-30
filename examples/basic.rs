@@ -11,7 +11,7 @@ fn main() {
     println!("=== Constraint Theory Core - Basic Example ===\n");
 
     // Create a Pythagorean manifold with density 200
-    // This generates ~1000 valid Pythagorean states
+    // This generates 40,384 valid Pythagorean states
     let density = 200;
     let manifold = PythagoreanManifold::new(density);
 

@@ -10,15 +10,15 @@ use constraint_theory_core::PythagoreanManifold;
 use std::time::Instant;
 
 fn main() {
-    let n = 100_000;
-    let warmup = 10_000;
+    let n = 4_000;
+    let warmup = 4_000;
     let iterations = 5;
 
     println!("========================================");
     println!("Constraint Theory - Detailed Profiling");
     println!("========================================\n");
 
-    // Create manifold with 200 density (~1000 states)
+    // Create manifold with density 200 (40,384 states)
     let manifold = PythagoreanManifold::new(200);
     println!("Manifold states: {}", manifold.state_count());
     println!(

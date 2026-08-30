@@ -1,338 +1,152 @@
-# ConstraintTheory Benchmarks
+# Constraint Theory Core — Benchmarks
 
-**Last Updated:** 2025-01-27
-**Version:** 1.0.1
-**Status:** Research Release - Empirical Validation Ongoing
+**Last measured:** 2026-07-09
+**Crate version:** 2.2.0
+**How to reproduce:** `cargo run --release --example bench_comparison` (KD-tree vs brute force) and `cargo run --release --example simd` (scalar vs SIMD batch).
 
----
-
-## Overview
-
-This document provides comprehensive benchmark results for ConstraintTheory, including:
-- Performance measurements of core operations
-- Comparison with alternative approaches
-- Methodology documentation
-- Known limitations and caveats
+> ⚠️ Every number below was measured on **one development machine** in a release
+> build, single-threaded. Absolute timings are CPU/cache dependent — treat them
+> as order-of-magnitude and **re-run the examples on your own hardware** before
+> trusting them. The things that are *not* machine-dependent (state counts,
+> asymptotic complexity, and the fact that the SIMD batch path is slower than
+> the scalar KD-tree path) are called out explicitly.
 
 ---
 
-## Core Performance Metrics
+## 1. Manifold state counts (deterministic, not machine-dependent)
 
-### Pythagorean Snap Operation
+`PythagoreanManifold::new(density)` enumerates primitive Pythagorean triples
+via Euclid's formula and stores 5 sign/swap variants per triple plus the 4
+cardinal axes. The count is exact and reproducible:
 
-The primary operation in ConstraintTheory is "snapping" a continuous vector to the nearest valid Pythagorean triple.
+| Density | Valid states | Memory for `Vec<[f32;2]>` |
+|---------|-------------:|--------------------------:|
+| 50      |        2,494 |                   ~20 KB  |
+| 100     |       10,004 |                   ~78 KB  |
+| 200     |       40,384 |                  ~315 KB  |
+| 500     |      252,829 |                 ~1.9 MB   |
 
-**Test Configuration:**
-- **CPU:** Varies (see individual results)
-- **Manifold Density:** 200 (yields ~1000 valid states)
-- **Operation:** Nearest-neighbor lookup + normalization
-- **Metric:** Time per operation (nanoseconds)
-
-| Implementation | Time (ns) | Time (us) | Ops/sec | Speedup |
-|----------------|-----------|-----------|---------|---------|
-| Python NumPy (baseline) | 10,900 | 10.9 | 91K | 1.0x |
-| Rust Scalar | 20,740 | 20.7 | 48K | 0.5x |
-| Rust SIMD | 6,390 | 6.4 | 156K | 1.7x |
-| **Rust + KD-tree** | **~100** | **0.1** | **~10M** | **~109x** |
-
-**Important Notes:**
-1. The "speedup" compares to the *NumPy baseline*, not to production-grade KD-tree implementations
-2. A well-optimized KD-tree in Python/NumPy would achieve similar O(log n) performance
-3. The ~109x figure applies **only** to geometric nearest-neighbor operations
-
-### Complexity Analysis
-
-| Operation | Complexity | Notes |
-|-----------|------------|-------|
-| Manifold build | O(n log n) | One-time cost |
-| Single snap | O(log n) | Via KD-tree |
-| Batch snap (SIMD) | O(m log n) | m vectors, amortized |
-| Memory usage | O(n) | Linear in manifold size |
+State count grows roughly quadratically with `density` (≈ density² / π). This is
+the single most important correction in this document: earlier revisions
+claimed "density 200 ≈ 1000 states", which is off by ~40× and invalidated the
+build-time, query-time, and memory tables below.
 
 ---
 
-## Methodology
+## 2. KD-tree vs brute force (single-vector nearest neighbour)
 
-### How Benchmarks Were Run
+Measured with `cargo run --release --example bench_comparison` (2026-07-09).
+The example builds a fresh KD-tree and queries 1000 unit vectors × 10
+iterations, with the result sink `black_box`-ed so the optimiser cannot elide
+the work.
+
+| Density | States   | Brute force (ns/op) | KD-tree (ns/op) | Speedup |
+|---------|---------:|--------------------:|----------------:|--------:|
+| 100     |  10,004  |              12,041 |             184 |   65×   |
+| 200     |  40,384  |              52,218 |             245 |  213×   |
+| 500     | 252,829  |             335,678 |             509 |  660×   |
+
+✅ This is the headline result: the KD-tree gives the expected near-logarithmic
+scaling and is **two to three orders of magnitude faster than brute force** as
+the manifold grows. (The hand-rolled KD-tree in the example is independent of
+the crate's `KDTree`; both are O(log n).)
+
+---
+
+## 3. Scalar (`snap_batch`) vs SIMD (`snap_batch_simd`) batch snapping
+
+Measured with `cargo run --release --example simd`, 1000 vectors per density
+(2026-07-09).
+
+| Density | States   | Scalar KD-tree (ns/vec) | SIMD batch (ns/vec) | SIMD / scalar |
+|---------|---------:|------------------------:|--------------------:|--------------:|
+| 50      |   2,494  |                    106  |                526  |     0.20×     |
+| 100     |  10,004  |                    131  |              2,198  |     0.06×     |
+| 200     |  40,384  |                    182  |              8,018  |     0.02×     |
+| 500     | 252,829  |                  1,172  |             56,057  |     0.02×     |
+
+⚠️ **The SIMD batch path is not faster — it is much slower.** `snap_batch_simd`
+is a **brute-force scan over every manifold state** (it does not use the
+KD-tree), so it is O(batch × states) while the scalar `snap_batch` is
+O(batch × log states). Earlier revisions of this document claimed an "8–9× SIMD
+speedup"; that does **not** reproduce and should not be relied on.
+
+**Recommendation:** use `snap_batch()` (scalar, KD-tree) for production batch
+snapping. Treat `snap_batch_simd()` as experimental until it is restructured to
+use an indexed lookup. 🔮
+
+---
+
+## 4. Complexity summary
+
+| Operation                         | Complexity        | Notes                          |
+|-----------------------------------|-------------------|--------------------------------|
+| `PythagoreanManifold::new(d)`     | O(d²)             | Enumerate primitive triples    |
+| `snap` (single vector)            | O(log N)          | KD-tree nearest neighbour      |
+| `snap_batch` (scalar)             | O(m log N)        | KD-tree per vector; recommended|
+| `snap_batch_simd`                 | O(m × N)          | Brute-force; slower for N ≥ ~50|
+| Memory                            | O(N)              | ~8 N bytes for the state vector|
+
+---
+
+## 5. How to reproduce on your machine
 
 ```bash
-# Clone repository
 git clone https://github.com/purplepincher/constraint-theory-core
-cd constraint-theory
+cd constraint-theory-core
 
-# Build in release mode
-cargo build --release
-
-# Run benchmark
-cargo run --release --example bench
-
-# Run comparison benchmark
-cargo run --release --example bench_comparison
-```
-
-### Benchmark Parameters
-
-- **Warmup:** 10,000 iterations to stabilize CPU frequency
-- **Measurement:** 100,000 operations over 5 iterations
-- **Manifold:** 200 density (~1000 states)
-- **Query vectors:** Pre-generated unit vectors
-
-### Reproducibility
-
-To reproduce benchmarks on your system:
-
-```rust
-use constraint_theory_core::{PythagoreanManifold, snap};
-use std::time::Instant;
-
-let manifold = PythagoreanManifold::new(200);
-let iterations = 100_000;
-
-// Warmup
-for _ in 0..10_000 {
-    let _ = snap(&manifold, [0.6, 0.8]);
-}
-
-// Benchmark
-let start = Instant::now();
-for _ in 0..iterations {
-    let _ = snap(&manifold, [0.6, 0.8]);
-}
-let duration = start.elapsed();
-
-let per_op_ns = duration.as_nanos() / iterations as u128;
-println!("Per operation: {} ns", per_op_ns);
-```
-
----
-
-## Comparison with Industry Standards
-
-### Nearest-Neighbor Libraries
-
-| Library | Language | Typical Performance | Notes |
-|---------|----------|---------------------|-------|
-| **FLANN** | C++ | ~50-200 ns | Fastest for approximate NN |
-| **scikit-learn KDTree** | Python | ~1-5 us | Overhead from Python |
-| **FAISS** | C++ | ~10-100 ns | Optimized for embeddings |
-| **ConstraintTheory** | Rust | ~100 ns | Specialized for Pythagorean |
-
-**Verdict:** ConstraintTheory's performance is competitive with well-optimized nearest-neighbor libraries. The ~100ns figure is consistent with KD-tree implementations in production use.
-
-### Constraint Solvers
-
-| Solver | Focus | Performance | Notes |
-|--------|-------|-------------|-------|
-| **OR-Tools** | General CSP | Problem-dependent | Industry standard |
-| **Gecode** | General CSP | Problem-dependent | Academic standard |
-| **MiniZinc** | Modeling | Varies | Higher-level interface |
-| **ConstraintTheory** | Geometric | ~100ns per snap | Specialized domain |
-
-**Verdict:** For general constraint satisfaction problems, OR-Tools or Gecode are recommended. ConstraintTheory excels specifically in geometric constraint domains.
-
----
-
-## Benchmark Results by Manifold Size
-
-### Build Time (milliseconds)
-
-| Density | States | Build Time (ms) |
-|---------|--------|-----------------|
-| 50 | ~250 | 0.5 |
-| 100 | ~500 | 1.2 |
-| 200 | ~1000 | 2.8 |
-| 500 | ~2500 | 8.5 |
-| 1000 | ~5000 | 22.0 |
-
-### Query Time (nanoseconds per operation)
-
-| Density | States | Brute Force | KD-tree | Speedup |
-|---------|--------|-------------|---------|---------|
-| 50 | ~250 | 2,500 | 85 | 29x |
-| 100 | ~500 | 5,200 | 92 | 57x |
-| 200 | ~1000 | 10,900 | 100 | 109x |
-| 500 | ~2500 | 27,500 | 115 | 239x |
-| 1000 | ~5000 | 55,000 | 130 | 423x |
-
-**Observation:** As expected, KD-tree performance scales logarithmically while brute force scales linearly.
-
----
-
-## SIMD Batch Performance
-
-For high-throughput applications, SIMD batch processing provides additional speedup:
-
-| Batch Size | Scalar (ms) | SIMD (ms) | Speedup |
-|------------|-------------|-----------|---------|
-| 100 | 0.01 | 0.002 | 5x |
-| 1,000 | 0.1 | 0.015 | 6.7x |
-| 10,000 | 1.0 | 0.12 | 8.3x |
-| 100,000 | 10.0 | 1.1 | 9.1x |
-
-**Note:** SIMD speedup approaches theoretical maximum (8x for AVX2) as batch size increases.
-
----
-
-## Memory Benchmarks
-
-| Configuration | Memory Usage |
-|---------------|--------------|
-| Manifold (200 density) | ~80 KB |
-| Manifold (500 density) | ~200 KB |
-| Manifold (1000 density) | ~400 KB |
-| Per-state overhead | ~80 bytes |
-
-Memory scales linearly with manifold size, as expected for O(n) space complexity.
-
----
-
-## Limitations and Caveats
-
-### What These Benchmarks Do NOT Measure
-
-1. **Machine Learning Performance**
-   - No validation on ML benchmarks (classification, clustering, etc.)
-   - No comparison with neural network approaches
-   - No measurement of model training or inference speedup
-
-2. **General Constraint Satisfaction**
-   - No comparison with OR-Tools on CSP benchmarks
-   - No measurement of complex multi-constraint problems
-   - No validation on real-world scheduling/optimization problems
-
-3. **Production Workloads**
-   - Synthetic test vectors, not real application data
-   - No measurement under concurrent access
-   - No stress testing or failure case analysis
-
-### Known Issues
-
-1. **Small Manifold Overhead**
-   - For manifolds <100 states, brute force may be faster due to cache effects
-
-2. **Worst-Case KD-tree**
-   - Degenerate input can cause O(n) worst-case performance
-   - Randomized input used in benchmarks avoids this
-
-3. **Hardware Dependencies**
-   - Performance varies significantly with CPU cache size
-   - SIMD requires AVX2 support (not available on all systems)
-
----
-
-## How to Run Your Own Benchmarks
-
-### Prerequisites
-
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Clone repository
-git clone https://github.com/purplepincher/constraint-theory-core
-cd constraint-theory
-```
-
-### Run All Benchmarks
-
-```bash
-# Core benchmark
-cargo run --release --example bench
-
-# Comparison with brute force
+# KD-tree vs brute force (the meaningful comparison)
 cargo run --release --example bench_comparison
 
-# Profiled benchmark (requires valgrind on Linux)
-cargo run --release --example bench_profiled
+# Scalar vs SIMD batch (shows the SIMD path is currently slower)
+cargo run --release --example simd
+
+# Criterion micro-benchmarks (slower; many groups)
+cargo bench
 ```
 
-### Custom Benchmark
-
-Create `my_bench.rs`:
-
-```rust
-use constraint_theory_core::{PythagoreanManifold, snap};
-use std::time::Instant;
-
-fn main() {
-    let manifold = PythagoreanManifold::new(500); // Adjust density
-    let test_vectors = vec![
-        [0.6, 0.8],
-        [0.8, 0.6],
-        // Add your test vectors
-    ];
-
-    // Warmup
-    for _ in 0..10_000 {
-        let _ = snap(&manifold, [0.5, 0.5]);
-    }
-
-    // Benchmark
-    let start = Instant::now();
-    for _ in 0..100_000 {
-        for &vec in &test_vectors {
-            let _ = snap(&manifold, vec);
-        }
-    }
-    let elapsed = start.elapsed();
-
-    println!("Total time: {:?}", elapsed);
-    println!("Per operation: {} ns", elapsed.as_nanos() / (100_000 * test_vectors.len() as u128));
-}
-```
-
-Run with:
-```bash
-cargo run --release --example my_bench
-```
+`cargo bench` runs the Criterion harness in `benches/core_benchmarks.rs`
+(manifold snap/batch/construction, quantizer, hidden dims, holonomy). Note that
+the `manifold_batch` SIMD group will likewise show SIMD slower than scalar.
 
 ---
 
-## Interpreting Results
+## 6. What these benchmarks do NOT measure
 
-### What Good Performance Looks Like
+⚠️ Be explicit about the gaps before citing this crate for a workload:
 
-- **Per-snap latency:** <500 ns (target: <100 ns)
-- **Throughput:** >1M ops/sec (target: >10M)
-- **Memory:** Linear scaling with manifold density
-- **Accuracy:** Noise < 0.01 for exact Pythagorean triples
-
-### Red Flags
-
-- Latency > 1 us: Check optimization level (use --release)
-- Inconsistent results: Increase warmup iterations
-- Memory growth: Check for memory leaks in batch processing
-
----
-
-## Future Benchmark Plans
-
-1. **ML Validation** (Q2 2026)
-   - Vector quantization benchmarks
-   - Embedding nearest-neighbor comparison
-   - Decision boundary experiments
-
-2. **CSP Comparison** (Q2 2026)
-   - OR-Tools benchmark suite
-   - Gecode comparison
-   - Standard CSP test problems
-
-3. **Production Profiling** (Q3 2026)
-   - Real-world application benchmarks
-   - Concurrent access patterns
-   - Memory stress testing
+- **No ML benchmarking.** Nothing is measured against classification,
+  clustering, retrieval, or embedding workloads.
+- **No comparison with general CSP solvers** (OR-Tools, Gecode, MiniZinc). This
+  crate is a geometric snapper, not a general constraint solver.
+- **No concurrent/production load testing.** All numbers are single-threaded on
+  synthetic unit vectors.
+- **Synthetic inputs only.** Query vectors are generated by sweeping an angle,
+  not drawn from a real application.
+- **The "~100 ns snap" figure quoted in some older material** is in the right
+  order of magnitude for the scalar KD-tree path at small densities (measured
+  ~170–245 ns here), but it is **not** a guarantee and was never reproducible as
+  a blanket statement.
 
 ---
 
-## References
+## 7. Industry context (references, not measured here)
 
-- [FLANN: Fast Library for Approximate Nearest Neighbors](https://github.com/flann-lib/flann)
-- [FAISS: Facebook AI Similarity Search](https://github.com/facebookresearch/faiss)
-- [Google OR-Tools](https://developers.google.com/optimization)
-- [Gecode Constraint Solver](https://www.gecode.org/)
+For context only — these figures come from each project's own documentation, not
+from measurements taken for this crate:
+
+| Tool | Typical NN latency (claimed) | Source |
+|------|------------------------------|--------|
+| FLANN | ~50–200 ns | flann-lib/flann README |
+| FAISS | ~10–100 ns | facebookresearch/faiss docs |
+| scikit-learn KDTree | ~1–5 µs | scikit-learn docs |
+
+This crate's scalar KD-tree (~180–500 ns in the table above) is in a similar
+range for this specialised 2-D Pythagorean task, but it has **not** been
+benchmarked head-to-head against any of those libraries.
 
 ---
 
-**Document Version:** 1.0.1
-**Last Benchmark Run:** 2025-01-27
-**Next Review:** 2025-04-01
+**Document version:** 2.2.0-bench
+**Next review:** when SIMD is restructured to use an indexed lookup, or on the
+next release — whichever comes first.

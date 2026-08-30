@@ -240,13 +240,15 @@ impl PythagoreanManifold {
         }
     }
 
-    /// SIMD-optimized batch snapping
+    /// SIMD batch snapping (AVX2, x86_64 only)
     ///
-    /// Processes multiple vectors at once using AVX2 SIMD instructions.
-    /// Achieves 8-16x speedup over scalar implementation.
+    /// Processes multiple vectors at once using AVX2 SIMD instructions via a
+    /// brute-force scan over every manifold state.
     ///
-    /// ⚠️ **WARNING**: SIMD path may have platform-dependent behavior for tie-breaking.
-    /// For consensus-critical code, use `snap_batch()` (scalar) instead.
+    /// ⚠️ Because this path does NOT use the KD-tree, it is O(batch × states)
+    /// and is typically *slower* than [`snap_batch`](Self::snap_batch) (which is
+    /// O(batch × log states)) for density ≥ ~50. Prefer `snap_batch` for
+    /// production. SIMD results may also differ from scalar on ties.
     ///
     /// # Arguments
     ///

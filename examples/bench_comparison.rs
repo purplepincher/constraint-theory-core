@@ -68,28 +68,16 @@ impl StandardKDTree {
         }
 
         let n = points.len();
-        let mut nodes = vec![None; n];
+        // Store the tree in array form (children at 2*i+1 / 2*i+2). A median-split
+        // tree is balanced, so its deepest index stays below 4*n; reserve that much
+        // to avoid out-of-bounds writes during construction. Keep the sparse layout
+        // (do NOT compact) so the stored child indices remain valid for queries.
+        let mut nodes = vec![None; 4 * n + 16];
         let indices: Vec<usize> = (0..n).collect();
 
-        let root = Self::build_recursive(&points, &indices, 0, &mut nodes, 0);
+        Self::build_recursive(&points, &indices, 0, &mut nodes, 0);
 
-        if let Some(_root_idx) = root {
-            // Compact the nodes vector
-            let mut compacted = Vec::with_capacity(n);
-            for node in nodes.into_iter().flatten() {
-                compacted.push(Some(node));
-            }
-
-            Self {
-                nodes: compacted,
-                points,
-            }
-        } else {
-            Self {
-                nodes: vec![],
-                points: vec![],
-            }
-        }
+        Self { nodes, points }
     }
 
     fn build_recursive(
@@ -263,17 +251,29 @@ fn run_benchmark<F: Fn(&Point) -> (usize, f32)>(
     f: F,
     iterations: usize,
 ) -> BenchmarkResult {
-    // Warmup
+    use std::hint::black_box;
+
+    // Accumulate results into a black-boxed sink so the optimizer cannot
+    // delete the (otherwise unused) nearest-neighbor work. Without this a
+    // release build reports bogus ~0 ns/op for the brute-force baseline.
+    let mut sink = 0usize;
     for _ in 0..1000 {
-        let _ = f(&queries[0]);
+        let (idx, dist) = f(&queries[0]);
+        sink = sink.wrapping_add(idx);
+        black_box(dist);
     }
+    black_box(sink);
 
     let start = Instant::now();
+    let mut sink = 0usize;
     for _ in 0..iterations {
         for query in queries {
-            let _ = f(query);
+            let (idx, dist) = f(query);
+            sink = sink.wrapping_add(idx);
+            black_box(dist);
         }
     }
+    black_box(sink);
     let total_time = start.elapsed();
 
     let total_ops = iterations * queries.len();

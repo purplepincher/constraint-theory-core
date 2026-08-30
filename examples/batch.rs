@@ -57,7 +57,10 @@ fn main() {
 
     // Example 4: Performance comparison
     println!("--- Example 4: Performance Comparison ---");
-    let large_batch: Vec<[f32; 2]> = (0..100_000)
+    println!("Note: snap_batch_simd is a brute-force scan over every manifold state");
+    println!("(O(batch * states)); the scalar snap_batch path uses the KD-tree");
+    println!("(O(batch * log(states))) and is faster at density 200 (40,384 states).\n");
+    let large_batch: Vec<[f32; 2]> = (0..8_000)
         .map(|i| {
             let angle = (i as f32) * 0.0001;
             [angle.cos(), angle.sin()]
@@ -89,8 +92,8 @@ fn main() {
 
     // Example 5: Streaming large datasets
     println!("--- Example 5: Streaming Large Datasets ---");
-    let chunk_size = 10_000;
-    let total_vectors = 1_000_000;
+    let chunk_size = 1_000;
+    let total_vectors = 8_000;
     let chunks = total_vectors / chunk_size;
 
     let mut chunk = vec![([0.0, 0.0], 0.0f32); chunk_size];

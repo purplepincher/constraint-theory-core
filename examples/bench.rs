@@ -9,15 +9,15 @@
 use constraint_theory_core::{snap, PythagoreanManifold};
 
 fn main() {
-    let n = 100_000;
-    let warmup = 10_000;
+    let n = 4_000;
+    let warmup = 4_000;
     let iterations = 5;
 
     println!("========================================");
     println!("Constraint Theory Core - SIMD Benchmark");
     println!("========================================\n");
 
-    // Create manifold with 200 density (~1000 states)
+    // Create manifold with density 200 (40,384 states)
     let manifold = PythagoreanManifold::new(200);
     println!("Manifold states: {}", manifold.state_count());
 
@@ -143,24 +143,22 @@ fn main() {
 
     let speedup = scalar_avg_ns / simd_avg_ns;
 
-    println!("  SIMD speedup:     {:.1}x", speedup);
+    println!("  SIMD speedup:     {:.2}x", speedup);
     println!(
         "  Time saved:       {:.2} ms per batch",
         (scalar_avg_ns - simd_avg_ns) / 1e6
     );
-    println!("  Target:           8-16x (AVX2 theoretical max)");
+    println!("  Note:             the SIMD batch path is a brute-force scan over");
+    println!("                    all states (no KD-tree); at density 200 (40,384");
+    println!("                    states) it is slower than scalar snap().");
     println!();
 
-    // Performance targets
-    println!("Performance Targets:");
+    // Scalar (KD-tree) is the recommended fast path
+    println!("Scalar (KD-tree) is the recommended path:");
+    println!("  Scalar per-tile:  {:.2} ns", scalar_avg_per_tile_ns);
     println!(
-        "  Current SIMD:     {:.2} us/tile",
-        simd_avg_per_tile_ns / 1000.0
-    );
-    println!("  Target:           <0.1 us/tile");
-    println!(
-        "  Progress:         {:.1}%",
-        (0.1 / (simd_avg_per_tile_ns / 1000.0)) * 100.0
+        "  SIMD per-tile:    {:.2} ns (brute-force; slower at density 200)",
+        simd_avg_per_tile_ns
     );
     println!();
 
@@ -197,12 +195,18 @@ fn main() {
     println!("Success Criteria");
     println!("========================================");
 
-    if speedup >= 8.0 {
-        println!("  [PASS] Speedup >= 8x: {:.1}x", speedup);
-    } else if speedup >= 4.0 {
-        println!("  [PARTIAL] Speedup >= 4x: {:.1}x (target: 8x)", speedup);
+    // SIMD batch is brute-force over all states; there is no 8x target — it is
+    // expected to be slower than the KD-tree scalar path at realistic sizes.
+    if speedup >= 1.0 {
+        println!(
+            "  [INFO] SIMD/scalar ratio: {:.2}x (SIMD faster here)",
+            speedup
+        );
     } else {
-        println!("  [FAIL] Speedup < 4x: {:.1}x (target: 8x)", speedup);
+        println!(
+            "  [INFO] SIMD/scalar ratio: {:.2}x (scalar KD-tree faster; expected at density 200)",
+            speedup
+        );
     }
 
     if simd_avg_per_tile_ns < 1000.0 {
@@ -223,8 +227,9 @@ fn main() {
     println!("\n========================================");
     println!("Next Steps for Further Optimization");
     println!("========================================");
-    println!("1. Add KD-tree for O(log N) state lookup (5-10x speedup)");
-    println!("2. Implement cache-aligned memory layout (2-3x speedup)");
-    println!("3. Add AVX-512 support for 16x parallelism (2x speedup)");
-    println!("4. Consider CUDA for GPU acceleration (100-1000x speedup)");
+    println!("1. The scalar snap() path already uses a KD-tree (O(log N)); prefer");
+    println!("   snap_batch() for production batch snapping.");
+    println!("2. snap_batch_simd() is a brute-force scan over all states; making it");
+    println!("   tree-based (or delegating to the KD-tree path) is future work.");
+    println!("3. Consider AVX-512 / NEON once the SIMD path is algorithmically competitive.");
 }
